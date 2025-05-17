@@ -8,6 +8,7 @@
     <RouterLink to="/">Go to Home</RouterLink>
     <RouterLink to="/about">Go to About</RouterLink>
     <RouterLink to="/write">Get Writing</RouterLink>
+    <RouterLink to="/database">Database</RouterLink>
   </nav>
   <main>
     <RouterView />
