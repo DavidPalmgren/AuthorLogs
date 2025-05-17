@@ -1,40 +1,75 @@
 <template>
+  <span v-if="justSaved" class="save-indicator">✓ Saved</span>
+
   <div :style="{ '--bg-color': bgColor }">
-    <div class="toolbar mb-2" :style="{ backgroundColor: bgColor }" style="display: flex; align-items: center; justify-content: center;" >
-
-      <button @click="toggleBold">Bold</button>
-      <button @click="toggleItalic">Italic</button>
-      <button @click="toggleHeading(1)">H1</button>
-      <button @click="toggleHeading(2)">H2</button>
-      <input type="color" v-model="bgColor"></input>
-    </div>
-
+    <EditorToolbar
+      :bgColor="bgColor"
+      :textColor="textColor"
+      @update:bgColor="bgColor = $event"
+      @update:textColor="textColor = $event"
+      @bold="toggleBold"
+      @italic="toggleItalic"
+      @heading="toggleHeading"
+    />
     <EditorContent :editor="editor" class="editor" />
   </div>
 </template>
 
-
 <script lang='ts' setup>
-import { onBeforeUnmount, ref } from 'vue';
-import { Editor, EditorContent } from '@tiptap/vue-3';
-import StarterKit from '@tiptap/starter-kit';
+import { onBeforeUnmount, ref, watch } from 'vue'
+import { Editor, EditorContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import EditorToolbar from './EditorToolbar.vue'
+import Color from '@tiptap/extension-color'
+import TextStyle from '@tiptap/extension-text-style'
 
-const bgColor = ref('#cccccc')
+const bgColor = ref('#000000')
+const textColor = ref('#cccccc')
+const savedContent = localStorage.getItem('novel-content') || '<p>Start your novel...</p>'
+
+watch(textColor, (color) => {
+  editor.chain().focus().setColor(color).run()
+})
+
+const justSaved = ref(false)
+
+const saveProgress = () => {
+  const content = editor.getHTML()
+  localStorage.setItem('novel-content', content)
+  justSaved.value = true
+  setTimeout(() => (justSaved.value = false), 1000)
+}
+
+const interval = setInterval(saveProgress, 60000)
+
 
 const editor = new Editor({
-  extensions: [StarterKit],
-  content: '<p>Start your novel...</p>',
-});
+  extensions: [
+    StarterKit,
+    Color.configure({
+      types: ['textStyle'],
+    }),
+    TextStyle,
+  ],
+  content: savedContent,
+})
+
+const handleBeforeUnload = () => {
+  localStorage.setItem('novel-content', editor.getHTML())
+}
+
+window.addEventListener('beforeunload', handleBeforeUnload)
 
 onBeforeUnmount(() => {
-  editor.destroy();
-});
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  clearInterval(interval)
+  editor.destroy()
+})
 
-const toggleBold = () => editor.chain().focus().toggleBold().run();
-const toggleItalic = () => editor.chain().focus().toggleItalic().run();
-const toggleHeading = (level) =>
-  editor.chain().focus().toggleHeading({ level }).run();
-
+const toggleBold = () => editor.chain().focus().toggleBold().run()
+const toggleItalic = () => editor.chain().focus().toggleItalic().run()
+const toggleHeading = (level: number) =>
+  editor.chain().focus().toggleHeading({ level }).run()
 </script>
 
 <style scoped>
@@ -54,31 +89,12 @@ const toggleHeading = (level) =>
   transition: background-color 0.3s ease;
 }
 
-button {
-  margin: 5px;
-  color: white;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  height: 45px;
-  width: 80px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.save-indicator {
+  margin-left: 1rem;
+  color: green;
+  font-weight: bold;
+  transition: opacity 0.5s ease;
 }
 
-.toolbar input[type="color"] {
-  margin: 5px;
-  height: 45px;
-  width: 80px;
-  padding: 0;
-  border: 1px solid transparent;
-  background-color: #1a1a1a;
-  border-radius: 5px;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-}
 
 </style>
